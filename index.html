@@ -1,0 +1,897 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Masjidlar.uz — Namoz vaqtlarini bilib oling</title>
+<meta name="description" content="Masjidlar.uz — namoz vaqtlari, qibla va katta real-time clock (ms).">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===============================
+   VARIABLES & BASE
+   =============================== */
+:root{
+  --accent: #13d38a;
+  --accent-2: #0bb06a;
+  --muted: #8db9a5;
+  --bg: linear-gradient(180deg,#eef7f3 0%, #f6fcf9 100%);
+  --card: #ffffff;
+  --text: #06221a;
+  --radius: 16px;
+  --glass: rgba(255,255,255,0.6);
+  --shadow-sm: 0 6px 20px rgba(3,15,10,0.06);
+  --shadow-lg: 0 30px 80px rgba(3,15,10,0.12);
+  font-family: "Vazirmatn", system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+}
+
+/* DARK THEME */
+[data-theme="dark"]{
+  --accent: #1ef0a2;
+  --accent-2: #0db074;
+  --muted: #9adbb6;
+  --bg: linear-gradient(180deg,#000000 0%, #06120f 100%);
+  --card: #07120f;
+  --text: #eafef3;
+  --glass: rgba(0,0,0,0.32);
+  --shadow-sm: 0 8px 30px rgba(0,0,0,0.6);
+  --shadow-lg: 0 40px 120px rgba(0,0,0,0.7);
+}
+
+/* Reset */
+*{box-sizing:border-box}
+html,body{height:120%;margin:0;color:var(--text);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;background:var(--bg)}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+
+/* App container - mobile-first */
+.app {
+  width:100%;
+  min-height:100vh;
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  align-items:stretch;
+}
+
+/* Top bar */
+.header {
+  display:flex;
+  gap:14px;
+  align-items:center;
+}
+.logo {
+  width:62px;height:62px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--accent-2),var(--accent));
+  color:#fff;font-weight:800;font-size:26px;box-shadow:var(--shadow-lg);
+}
+.brand {
+  display:flex;flex-direction:column;
+}
+.brand h1{margin:0;font-size:18px;font-weight:800}
+.brand p{margin:4px 0 0;color:var(--muted);font-size:13px}
+
+/* Header actions */
+.header-actions {margin-left:auto; display:flex; gap:8px; align-items:center}
+.theme-btn {
+  width:44px;height:44px;border-radius:12px;border:0;background:var(--card);box-shadow:var(--shadow-sm);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .18s ease, box-shadow .18s;
+}
+.theme-btn:active{transform:translateY(1px)}
+.theme-btn:hover{box-shadow:var(--shadow-lg)}
+
+/* Nav row */
+.nav {
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+}
+.nav .nav-btn{
+  padding:8px 12px;border-radius:12px;border:0;background:transparent;color:var(--muted);font-weight:700;cursor:pointer;
+  transition:all .18s ease;
+}
+.nav .nav-btn.active{ background: linear-gradient(90deg,var(--accent),var(--accent-2)); color:#00160e; box-shadow:var(--shadow-sm)}
+
+/* Filter row */
+.filter {
+  display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+}
+.input, select.input {
+  padding:12px 14px;border-radius:12px;border:1px solid rgba(0,0,0,0.06);min-width:160px;background:linear-gradient(180deg,#fff,#fbfffb);font-weight:700;
+}
+[data-theme="dark"] .input, [data-theme="dark"] select.input { background: linear-gradient(180deg,#071814,#071814); border:1px solid rgba(255,255,255,0.04); color:var(--text) }
+.btn { padding:10px 14px;border-radius:14px;border:0;background:var(--accent);color:#00160e;font-weight:800;cursor:pointer; box-shadow: 0 10px 36px rgba(11,122,75,0.12); transition: transform .12s ease, box-shadow .12s ease }
+.btn.ghost{ background: transparent;border:1px solid rgba(0,0,0,0.06); color:var(--muted); box-shadow:none }
+
+/* Main layout centered card (mobile-first) */
+.main-wrap {
+  width:100%;
+  display:flex;
+  justify-content:center;
+  padding-bottom:60px;
+}
+.main {
+  width:100%;
+  max-width:960px; /* desktop centered width */
+  margin:0 auto;
+  padding:12px;
+}
+
+/* Card */
+.card {
+  background: var(--card);
+  border-radius: calc(var(--radius) + 6px);
+  padding:18px;
+  box-shadow: var(--shadow-lg);
+  border:1px solid rgba(0,0,0,0.03);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.card:hover{ transform: translateY(-4px); box-shadow: 0 40px 120px rgba(3,15,10,0.14) }
+
+/* Page title row */
+.page-title {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:0 0 10px 0;
+}
+.page-title h2 { margin:0; font-size:20px; font-weight:800 }
+.page-title .date { color:var(--muted); font-weight:800 }
+
+/* Layout columns - mobile stacks */
+.columns { display:flex; gap:14px; flex-direction:column; align-items:stretch; }
+.left-col { min-width:220px; width:100%; }
+.right-col { flex:1; }
+
+/* Key next prayer card */
+.next-card {
+  border-radius:14px;
+  padding:18px;
+  background: linear-gradient(180deg, rgba(11,122,75,0.03), rgba(11,122,75,0.01));
+  display:flex;flex-direction:column;gap:8px;align-items:center;min-width:220px;
+}
+.next-card .np-title{ font-weight:800;color:var(--muted); font-size:13px }
+.next-card .np-name{ font-weight:900; font-size:28px; color: var(--accent) }
+.next-card .np-time{ font-weight:900; font-size:22px; color: var(--accent-2) }
+.next-card .np-region{ font-size:13px;color:var(--muted) }
+
+/* Mini countdown area */
+.countdown-mini { display:flex; flex-direction:column; gap:12px; }
+.countdown-mini .top { display:flex; justify-content:space-between; align-items:center }
+.countdown-mini .big-mini { display:flex; gap:18px; align-items:center; flex-wrap:wrap }
+
+/* Mini clock */
+.cdm-time { font-weight:900; font-size:36px; color:var(--text); margin:8px 0; }
+
+/* progress */
+.cdm-progress { width:100%; height:12px; border-radius:999px; background: linear-gradient(90deg,#e9f6ef,#f6fffb); overflow:hidden }
+.cdm-progress > i{ display:block; height:100%; background: linear-gradient(90deg,var(--accent),var(--accent-2)); width:0%; transition: width .4s linear; }
+
+/* times grid */
+.times-grid { display:grid; grid-template-columns: repeat(3,1fr); gap:14px; margin-top:6px; }
+.time-pill { background: rgba(0,0,0,0.03); padding:18px; border-radius:12px; display:flex; flex-direction:column; align-items:center; min-height:88px; justify-content:center; box-shadow: var(--shadow-sm) }
+.time-pill .label { font-weight:800; color:var(--muted) }
+.time-pill .val { font-weight:900; color:var(--accent); font-size:18px; margin-top:8px }
+
+/* Buttons group */
+.actions { margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; }
+
+/* COUNTDOWN FULL (BIG) */
+.countdown-full { display:flex; flex-direction:column; align-items:center; gap:14px; padding:12px 0; width:100% }
+.big-clock {
+  width:100%;
+  max-width:680px;
+  display:flex;
+  justify-content:center;
+  gap:18px;
+  padding:28px;
+  border-radius:18px;
+  background: linear-gradient(180deg,#ffffff,#f3fff8);
+  box-shadow: 0 30px 100px rgba(11,122,75,0.06);
+  color:var(--text);
+  align-items:center;
+}
+[data-theme="dark"] .big-clock { background: linear-gradient(180deg,#071413,#0b231d); box-shadow: 0 40px 120px rgba(0,0,0,0.7); color:var(--text) }
+.big-clock span { display:inline-block; min-width:58px; font-weight:900; font-size: clamp(28px, 6vw, 56px); text-align:center; }
+
+/* tz boxes */
+.tz-row { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; width:100% }
+.tz { padding:10px 12px; border-radius:12px; background: rgba(0,0,0,0.04); min-width:180px; text-align:center; font-weight:700; color:var(--muted) }
+
+/* qibla circle */
+.qibla-circle { width:200px; height:200px; border-radius:999px; border:6px solid rgba(11,122,75,0.06); position:relative; display:flex; align-items:center; justify-content:center; margin:auto }
+.needle { width:6px; height:80px; background: linear-gradient(180deg,#ff6b6b,#ff3b3b); border-radius:6px; position:absolute; transform-origin:center bottom; transform: translate(-50%,-100%) rotate(0deg); left:50%; top:50%; transition: transform .6s cubic-bezier(.2,.9,.2,1);   transform-origin: 50% 90%;
+  transition: transform 0.2s linear;}
+
+/* footer */
+.footer { margin-top:20px; text-align:center; color:var(--muted) }
+
+/* MOBILE ADJUST */
+@media (max-width:720px){
+  .times-grid { grid-template-columns: repeat(2,1fr) }
+  .big-clock { padding:20px }
+  .page-title h2{ font-size:18px }
+}
+
+/* DESKTOP ADJUST - center the main card */
+@media (min-width:981px){
+  .columns { flex-direction:row; align-items:flex-start }
+  .left-col { width:300px; flex:0 0 300px }
+  .right-col { flex:1 }
+  .main { padding: 28px 36px; }
+  .card{ padding:28px; border-radius:24px }
+  .times-grid { gap:18px }
+}
+
+/* Extra tweaks for iPhone 14 Pro Max-ish screens */
+@media (min-width:420px) and (max-width:480px) {
+  .logo { width:68px;height:68px }
+  .brand h1{ font-size:20px }
+  .big-clock span { min-width:48px }
+}
+
+/* small micro animations */
+.fade-in { animation: fadeIn .45s ease both }
+@keyframes fadeIn { from{opacity:0; transform: translateY(6px)} to{opacity:1; transform: none} }
+
+.pulse {
+  animation: pulse .9s ease infinite;
+}
+@keyframes pulse { 0% { transform: translateY(0) } 50% { transform: translateY(-3px)} 100% { transform: translateY(0)} }
+
+</style>
+</head>
+<body data-theme="dark">
+<div class="app" id="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo" aria-hidden>🕌</div>
+    <div class="brand">
+      <h1>Masjidlar.uz</h1>
+      <p>namoz vaqtlarini bilib oling</p>
+    </div>
+    <div class="header-actions">
+      <button id="themeToggle" class="theme-btn" title="Toggle theme">🌗</button>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <div class="nav">
+    <button class="nav-btn active" data-target="today">🏙 Bugun</button>
+    <button class="nav-btn" data-target="tables">📅 Jadvallar</button>
+    <button class="nav-btn" data-target="qibla">🧭 Qibla</button>
+    <button class="nav-btn" data-target="countdown">⏱ Countdown</button>
+  </div>
+
+  <!-- Filter -->
+  <div class="filter">
+    <select id="regionSelect" class="input" aria-label="Hududni tanlang"></select>
+    <input id="slugInput" class="input" placeholder="Hudud slug (ixtiyoriy)" />
+    <button id="loadBtn" class="btn">🔁 Yuklash</button>
+    <button id="refreshBtn" class="btn ghost">🔄 Yangilash</button>
+    <button id="geoBtn" class="btn ghost">📍 Lokatsiya</button>
+  </div>
+
+  <!-- Main centered content -->
+  <div class="main-wrap">
+    <div class="main">
+
+      <!-- TODAY Card -->
+      <section id="today" class="card page active fade-in">
+        <div class="page-title">
+          <h2>Bugungi namoz vaqtlari</h2>
+          <div id="todayDate" class="date"></div>
+        </div>
+
+        <div class="columns">
+          <div class="left-col">
+            <div class="next-card">
+              <div class="np-title">Keyingi namoz</div>
+              <div id="mainPrayerName" class="np-name">—</div>
+              <div id="mainPrayerTime" class="np-time">--:--</div>
+              <div class="np-region">Hudud: <span id="mainRegion">—</span></div>
+            </div>
+          </div>
+
+          <div class="right-col">
+            <div class="countdown-mini">
+              <div class="top">
+                <div style="font-weight:800;color:var(--muted)">Namozga qolgan vaqt</div>
+                <div id="prevNextLabel" style="color:var(--muted);font-weight:700"></div>
+              </div>
+
+              <div class="big-mini" style="align-items:center">
+                <div>
+                  <div id="miniClock" class="cdm-time">--:--:--</div>
+                  <div id="miniSub" style="margin-top:6px;color:var(--muted)">—</div>
+                </div>
+
+                <div style="flex:1">
+                  <div class="cdm-progress"><i id="miniBar" style="width:0%"></i></div>
+                  <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:13px;color:var(--muted)"><span id="prevLabel">—</span><span id="nextLabel">—</span></div>
+                </div>
+              </div>
+
+              <div class="times-grid" id="timesGrid" aria-live="polite"></div>
+
+              <div class="actions">
+                <button id="openCountdown" class="btn">⏱️ Katta Countdown</button>
+                <button id="icalBtn" class="btn ghost">📥 iCal</button>
+                <button id="shareBtn" class="btn ghost">🔗 Ulashish</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TABLES -->
+      <section id="tables" class="card page" style="display:none;margin-top:18px">
+        <h3 class="page-title" style="margin-bottom:12px">Haftalik / Oylik jadvallar</h3>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="tRegion" class="input"></select>
+          <select id="tMonth" class="input"></select>
+          <select id="tPeriod" class="input">
+            <option value="week">Haftalik</option>
+            <option value="month">Oylik</option>
+          </select> 
+          <button id="tLoad" class="btn">Yuklash</button>
+        </div>
+        <div id="tablesOut" style="margin-top:12px"></div>
+      </section>
+
+      <!-- QIBLA -->
+      <section id="qibla" class="card page" style="display:none;margin-top:18px;text-align:center">
+        <h3 class="page-title" style="margin-bottom:12px">Qibla yo'nalishi</h3>
+        <div>
+          <div class="qibla-circle" aria-hidden>
+            <div id="needle" class="needle" style="transform: translate(-50%,-100%) rotate(0deg)"></div>
+          </div>
+          <div id="qiblaAngle" style="margin-top:12px;font-weight:900">—°</div>
+          <div style="margin-top:12px"><button id="getGeoQibla" class="btn ghost">📍 Lokatsiyani aniqlash</button></div>
+          <div id="qiblaGeoInfo" style="margin-top:8px;color:var(--muted)"></div>
+        </div>
+      </section>
+
+      <!-- COUNTDOWN full -->
+      <section id="countdown" class="card page" style="display:none;margin-top:18px">
+        <h3 class="page-title" style="margin-bottom:8px">Real-time soat (millisekund bilan)</h3>
+        <div class="countdown-full">
+          <div id="bigClock" class="big-clock">
+            <span class="bc-hour">00</span>
+            <span class="bc-minute">00</span>
+            <span class="bc-second">00</span>
+            <span class="bc-ms" style="font-size:18px">000</span>
+          </div>
+
+            <div class="tz-row">
+              <div class="tz">🇺🇿 Oʻzbekiston (Tashkent): <strong id="tzUZ">--:--:--</strong></div>
+              <div class="tz">🇸🇦 Saudiya Arabistoni: <strong id="tzSA">--:--:--</strong></div>
+              <div class="tz">🇦🇪 BAA Dubai: <strong id="tzDubai">--:--:--</strong></div>
+              <div class="tz">🇪🇬 Misr (Qohira): <strong id="tzEG">--:--:--</strong></div>
+              <div class="tz">🇮🇷 Eron (Tehran): <strong id="tzIR">--:--:--</strong></div>
+              <div class="tz">🇾🇪 Yaman (Sana’a): <strong id="tzYE">--:--:--</strong></div>
+              <div class="tz">🇶🇦 Qatar (Doha): <strong id="tzQA">--:--:--</strong></div>
+              <div class="tz">🇺🇸 Amerika (New York): <strong id="tzUS">--:--:--</strong></div>
+              <div class="tz">🇷🇺 Rossiya (Moskva): <strong id="tzRU">--:--:--</strong></div>
+              <div class="tz">🇯🇵 Yaponiya (Tokyo): <strong id="tzJP">--:--:--</strong></div>
+              <div class="tz">🇦🇺 Avstraliya (Sydney): <strong id="tzAU">--:--:--</strong></div>
+            </div>
+
+
+          <div style="margin-top:8px;color:var(--muted);text-align:center">Big clock — faqatgina soatni ko'rsatadi (millisekundlar bilan), tugmalar yo'q.</div>
+        </div>
+      </section>
+
+      <div class="footer">© Masjidlar.uz — namoz vaqtlarini bilib oling</div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================
+   CONFIG
+   ========================= */
+// O'zingizning proxy/APIni shu yerga qo'ying (agar yo'q bo'lsa ham static demo funksiyalar ishlaydi)
+const API_PROXY = "https://patient-limit-84cg.subadevuz.workers.dev/"; // <-- o'zgartiring agar kerak
+const REGIONS = ['toshkent-shahri','toshkent','andijon','namangan','fargona','samarqand','buxoro','xorazm','navoiy','qashqadaryo','surxondaryo','jizzax','sirdaryo','qoraqalpogiston'];
+
+/* =========================
+   HELPERS
+   ========================= */
+function $ (sel) { return document.querySelector(sel) }
+function $$ (sel) { return Array.from(document.querySelectorAll(sel)) }
+function pad(n) { return String(n).padStart(2,'0') }
+function nowISODate(){ return new Date().toISOString().slice(0,10) }
+
+/* =========================
+   THEME
+   ========================= */
+const body = document.body;
+const themeBtn = $('#themeToggle');
+function setTheme(theme){
+  if(theme==='dark') body.setAttribute('data-theme','dark');
+  else body.setAttribute('data-theme','');
+  localStorage.setItem('masjid_theme', theme);
+}
+themeBtn.addEventListener('click', ()=>{
+  const cur = localStorage.getItem('masjid_theme') === 'dark' ? 'dark' : 'light';
+  setTheme(cur==='dark' ? 'light' : 'dark');
+});
+const saved = localStorage.getItem('masjid_theme');
+if(saved) setTheme(saved);
+else if(window.matchMedia && window.matchMedia('(prefers-color-scheme:dark)').matches) setTheme('dark');
+else setTheme('light');
+
+/* =========================
+   DOM REFS
+   ========================= */
+const navBtns = $$('.nav-btn');
+const pages = $$('.page');
+const regionSelect = $('#regionSelect');
+const slugInput = $('#slugInput');
+const loadBtn = $('#loadBtn');
+const refreshBtn = $('#refreshBtn');
+const geoBtn = $('#geoBtn');
+
+const mainPrayerName = $('#mainPrayerName');
+const mainPrayerTime = $('#mainPrayerTime');
+const mainRegion = $('#mainRegion');
+const todayDate = $('#todayDate');
+
+const miniClock = $('#miniClock');
+const miniSub = $('#miniSub');
+const miniBar = $('#miniBar');
+const prevLabel = $('#prevLabel');
+const nextLabel = $('#nextLabel');
+const prevNextLabel = $('#prevNextLabel');
+const timesGrid = $('#timesGrid');
+
+const openCountdown = $('#openCountdown');
+const bigClockEls = { hour: document.querySelector('.bc-hour'), minute: document.querySelector('.bc-minute'), second: document.querySelector('.bc-second'), ms: document.querySelector('.bc-ms') };
+const tzUZ = $('#tzUZ'), tzSA = $('#tzSA'), tzEG = $('#tzEG');
+const needleEl = $('#needle'), qiblaAngle = $('#qiblaAngle'), qiblaGeoInfo = $('#qiblaGeoInfo');
+const getGeoQiblaBtn = $('#getGeoQibla');
+
+/* =========================
+   ROUTING
+   ========================= */
+navBtns.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    navBtns.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const target = btn.getAttribute('data-target');
+    pages.forEach(p=> p.style.display = (p.id === target) ? 'block' : 'none');
+    // make sure mobile scroll to top of main
+    window.scrollTo({ top: 0, behavior:'smooth' });
+  });
+});
+
+
+$('#getGeoQibla').addEventListener('click', () => {
+  if (!navigator.geolocation) return alert("Geolokatsiya mavjud emas");
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      updateQibla(lat, lng);        // Qibla ignasini bir martalik o‘rnatish
+      enableRealTimeCompass(lat, lng); // REAL-TIME QIBLA KOMPASNI ISHLATISH
+
+      alert("Lokatsiya olindi! Endi telefonni aylantirsangiz, qibla real vaqt rejimida ko‘rsatiladi.");
+    },
+    (err) => alert("Lokatsiyani olishda xato: " + (err.message || "")),
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+});
+
+
+/* =========================
+   POPULATE REGIONS
+   ========================= */
+(function populateRegions(){
+  REGIONS.forEach(s=>{
+    const o = document.createElement('option'); o.value=s; o.textContent = s.replace(/-/g,' ');
+    regionSelect.appendChild(o);
+  });
+  const tRegion = $('#tRegion');
+  if(tRegion) REGIONS.forEach(s=> { const o=document.createElement('option'); o.value=s; o.textContent=s.replace(/-/g,' '); tRegion.appendChild(o); });
+})();
+
+/* =========================
+   FETCH PROXY HELPER
+   ========================= */
+async function fetchProxy(params){
+  const url = new URL(API_PROXY);
+  Object.entries(params).forEach(([k,v])=> url.searchParams.append(k,v));
+  url.searchParams.set('format','json');
+  try{
+    const r = await fetch(url.toString(), { cache:'no-store' });
+    if(!r.ok) throw new Error('Server javob xatosi: '+r.status);
+    return await r.json();
+  }catch(e){
+    console.warn('fetchProxy error', e);
+    throw e;
+  }
+}
+
+/* =========================
+   RENDER TIMES
+   ========================= */
+let state = { data:null, region: regionSelect.value, miniInterval:null, bigClockInterval:null };
+
+function clearTimesUI(){
+  timesGrid.innerHTML = '';
+  mainPrayerName.textContent = '—';
+  mainPrayerTime.textContent = '--:--';
+  mainRegion.textContent = '—';
+  miniClock.textContent = '--:--:--';
+  miniBar.style.width = '0%';
+  prevLabel.textContent = '—';
+  nextLabel.textContent = '—';
+  prevNextLabel.textContent = '';
+  todayDate.textContent = '';
+}
+
+function renderTimes(json){
+  if(!json || !json.today || !json.today.times) { clearTimesUI(); return; }
+  state.data = json;
+  const times = json.today.times;
+  const labels = {bomdod:'Bomdod', quyosh:'Quyosh', peshin:'Peshin', asr:'Asr', shom:'Shom', xufton:'Xufton'};
+  const next = json.today.next || null;
+  const cur = json.today.current || null;
+
+  mainPrayerName.textContent = (next && next.label) ? next.label : '—';
+  mainPrayerTime.textContent = (next && next.time) ? next.time : '--:--';
+  mainRegion.textContent = (json.meta && (json.meta.region && (json.meta.region.name || json.meta.region.slug))) || regionSelect.value;
+  todayDate.textContent = (json.meta && json.meta.date) ? json.meta.date : nowISODate();
+
+  prevLabel.textContent = (cur && cur.label) ? cur.label : '—';
+  nextLabel.textContent = (next && next.label) ? next.label : '—';
+  prevNextLabel.textContent = (cur && cur.label && next && next.label) ? `${cur.label} → ${next.label}` : '';
+
+  // times grid
+  timesGrid.innerHTML = '';
+  const order = ['bomdod','quyosh','peshin','asr','shom','xufton'];
+  order.forEach(k=>{
+    const el = document.createElement('div'); el.className='time-pill fade-in';
+    el.innerHTML = `<div class="label">${labels[k]}</div><div class="val">${times[k]||'—'}</div>`;
+    timesGrid.appendChild(el);
+  });
+
+  // start mini countdown
+  startMiniCountdown(json);
+}
+
+
+tLoad.addEventListener('click', async () => {
+  const reg = $('#tRegion').value;
+  const per = $('#tPeriod').value;  // week OR month
+  await loadPeriod(reg, per);
+});
+
+
+
+
+/* =========================
+   MINI COUNTDOWN
+   ========================= */
+function startMiniCountdown(json){
+  if(state.miniInterval) clearInterval(state.miniInterval);
+
+  function tick(){
+    try{
+      const now = new Date();
+      if(!json || !json.today || !json.today.next){ miniClock.textContent='--:--:--'; miniBar.style.width='0%'; miniSub.textContent=''; return; }
+      const next = json.today.next;
+      const cur = json.today.current;
+      const [nh,nm] = (next.time||'00:00').split(':').map(x=>parseInt(x,10));
+      let nextDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), nh, nm, 0);
+      if(nextDate.getTime() <= now.getTime()) nextDate.setDate(nextDate.getDate()+1);
+
+      let prevDate;
+      if(cur && cur.start){
+        const [ph,pm] = cur.start.split(':').map(x=>parseInt(x,10));
+        prevDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), ph, pm, 0);
+        if(prevDate.getTime() > nextDate.getTime()) prevDate.setDate(prevDate.getDate()-1);
+      } else prevDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(),0,0);
+
+      const total = nextDate - prevDate;
+      const left = Math.max(0, nextDate - now);
+      const pct = Math.max(0, Math.min(100, Math.round((1 - left/total) * 100)));
+      miniBar.style.width = pct + '%';
+
+      const s = Math.max(0, Math.floor(left/1000));
+      const hh = String(Math.floor(s/3600)).padStart(2,'0');
+      const mm = String(Math.floor((s%3600)/60)).padStart(2,'0');
+      const ss = String(s%60).padStart(2,'0');
+      miniClock.textContent = `${hh}:${mm}:${ss}`;
+      miniSub.textContent = `Keyingi: ${(next.label||'—')} — ${(next.time||'--:--')}`;
+    }catch(e){ console.error(e); }
+  }
+
+  tick();
+  state.miniInterval = setInterval(tick, 250);
+}
+
+/* =========================
+   LOAD TODAY / PERIOD
+   ========================= */
+async function loadToday(region){
+  try{
+    $('#miniSub').textContent = 'Yuklanmoqda...';
+    const json = await fetchProxy({ region, period: 'today', lang: 'lotin' });
+    renderTimes(json);
+    // optionally load period/week for tables
+    await loadPeriod(region,'week').catch(()=>{});
+    $('#miniSub').textContent = '';
+  }catch(err){
+    console.error(err);
+    timesGrid.innerHTML = `<div style="color:var(--muted)">Xatolik: ${err.message || 'API'}</div>`;
+    $('#miniSub').textContent = 'Xatolik yuklashda';
+  }
+}
+async function loadPeriod(region, period = 'week') {
+  try {
+    const [year, month] = $('#tMonth').value.split('-');
+
+    const params = {
+      region,
+      period,
+      lang: 'lotin'
+    };
+
+    // Oylik bo‘lsa — yil va oy yuboramiz
+    if (period === 'month') {
+      params.year = year;
+      params.month = month;
+    }
+
+    const json = await fetchProxy(params);
+
+    if (!json || !json.period_table || json.period_table.length === 0) {
+      $('#tablesOut').innerHTML = '<div class="muted">Jadval mavjud emas</div>';
+      return;
+    }
+
+    const rows = json.period_table.map(r => `
+      <tr>
+        <td>${r.date}</td>
+        <td>${r.times?.bomdod || '—'}</td>
+        <td>${r.times?.peshin || '—'}</td>
+        <td>${r.times?.asr || '—'}</td>
+        <td>${r.times?.shom || '—'}</td>
+        <td>${r.times?.xufton || '—'}</td>
+      </tr>
+    `).join('');
+
+    $('#tablesOut').innerHTML = `
+      <div style="overflow:auto">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr>
+              <th>Kun</th>
+              <th>Bomdod</th>
+              <th>Peshin</th>
+              <th>Asr</th>
+              <th>Shom</th>
+              <th>Xufton</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  } catch (err) {
+    $('#tablesOut').innerHTML =
+      `<div class="muted">Xatolik: ${err.message}</div>`;
+  }
+}
+
+
+
+
+/* ============================================================
+   REAL-TIME QIBLA COMPASS (DeviceOrientation API)
+   ============================================================ */
+
+let qiblaBearing = null; // Ka'baga yo‘nalish (daraja)
+
+/* Telefon qimirlaganda ishlaydi */
+function startCompass() {
+  if (window.DeviceOrientationEvent) {
+
+    // iPhone uchun ruxsat so‘rash
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {
+      DeviceOrientationEvent.requestPermission()
+        .then(permissionState => {
+          if (permissionState === "granted") {
+            window.addEventListener("deviceorientation", handleCompass, true);
+          } else {
+            alert("Kompasga ruxsat berilmadi.");
+          }
+        })
+        .catch(console.error);
+    } else {
+      // Android — ruxsat kerak emas
+      window.addEventListener("deviceorientation", handleCompass, true);
+    }
+
+  } else {
+    alert("Sizning qurilmangiz kompasni qo‘llab-quvvatlamaydi.");
+  }
+}
+
+/* Kompasdan daraja olish */
+function handleCompass(event) {
+  if (!qiblaBearing) return; // Lokatsiya olinmagan bo‘lsa, ishlamaydi
+
+  let heading;
+
+  if (event.webkitCompassHeading) {
+    // iPhone Safari
+    heading = event.webkitCompassHeading;
+  } else if (event.alpha !== null) {
+    // Android
+    heading = 360 - event.alpha;
+  } else {
+    return;
+  }
+
+  const needle = document.getElementById("needle");
+
+  // Qibla yo'nalishini hisoblash
+  const direction = (qiblaBearing - heading + 360) % 360;
+
+  needle.style.transform = `translate(-50%, -100%) rotate(${direction}deg)`;
+}
+
+/* Qibla yo‘nalishini hisoblash (lat & lng olingandan keyin) */
+async function enableRealTimeCompass(lat, lng) {
+  qiblaBearing = bearingBetween(lat, lng, kaaba.lat, kaaba.lng);
+
+  document.getElementById("qiblaAngle").textContent =
+    qiblaBearing.toFixed(1) + "°";
+
+  startCompass(); // Kompasni ishga tushiramiz
+}
+
+
+
+
+
+/* =========================
+   BUTTON EVENTS
+   ========================= */
+loadBtn.addEventListener('click', async ()=>{
+  const free = slugInput.value.trim();
+  const region = free || regionSelect.value;
+  state.region = region;
+  await loadToday(region);
+});
+refreshBtn.addEventListener('click', async ()=> { await loadToday(state.region || regionSelect.value); });
+$('#openCountdown').addEventListener('click', ()=> {
+  document.querySelector('[data-target="countdown"]').click();
+});
+$('#shareBtn').addEventListener('click', ()=> {
+  const url = location.href + '?region=' + encodeURIComponent(state.region || regionSelect.value);
+  if(navigator.share) navigator.share({ title:'Masjidlar.uz', text:'Bugungi namoz vaqtlari', url });
+  else prompt('Havolani nusxa oling:', url);
+});
+$('#icalBtn').addEventListener('click', ()=> {
+  if(!state.data || !state.data.today) return alert('Avval hududni yuklang');
+  const times = state.data.today.times;
+  const date = state.data.meta && state.data.meta.date ? state.data.meta.date : nowISODate();
+  let ics = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Masjidlar.uz//EN\n';
+  ['bomdod','peshin','asr','shom','xufton'].forEach(k=>{
+    if(times[k]){
+      const dt = date.replace(/-/g,'') + 'T' + times[k].replace(':','') + '00';
+      ics += 'BEGIN:VEVENT\nSUMMARY:' + k + '\nDTSTART:' + dt + '\nDTEND:' + dt + '\nEND:VEVENT\n';
+    }
+  });
+  ics += 'END:VCALENDAR';
+  const blob = new Blob([ics], {type:'text/calendar'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'namoz_'+date+'.ics'; document.body.appendChild(a); a.click(); a.remove();
+});
+
+/* =========================
+   BIG CLOCK + TIMEZONES
+   ========================= */
+
+const tzDubai = $('#tzDubai');
+const tzIR = $('#tzIR');
+const tzYE = $('#tzYE');
+const tzQA = $('#tzQA');
+const tzUS = $('#tzUS');
+const tzRU = $('#tzRU');
+const tzJP = $('#tzJP');
+const tzAU = $('#tzAU');
+
+  
+function updateBigAndTZ(){
+  const now = new Date();
+
+  // Big Clock
+  bigClockEls.hour.textContent = pad(now.getHours());
+  bigClockEls.minute.textContent = pad(now.getMinutes());
+  bigClockEls.second.textContent = pad(now.getSeconds());
+  bigClockEls.ms.textContent = String(now.getMilliseconds()).padStart(3,'0');
+
+  // Timezones — yangi davlatlar qo‘shildi
+  tzUZ.textContent = new Intl.DateTimeFormat("ru-RU", { timeZone:"Asia/Tashkent", hour:"2-digit", minute:"2-digit", second:"2-digit" }).format(now);
+  tzSA.textContent = new Intl.DateTimeFormat("ru-RU", { timeZone:"Asia/Riyadh", hour:"2-digit", minute:"2-digit", second:"2-digit" }).format(now);
+  tzDubai.textContent = new Intl.DateTimeFormat("ru-RU", { timeZone:"Asia/Dubai", hour:"2-digit", minute:"2-digit", second:"2-digit" }).format(now);
+  tzEG.textContent = new Intl.DateTimeFormat("ru-RU", { timeZone:"Africa/Cairo", hour:"2-digit", minute:"2-digit", second:"2-digit" }).format(now);
+  tzIR.textContent = new Intl.DateTimeFormat("ru-RU", { timeZone:"Asia/Tehran", hour:"2-digit", minute:"2-digit", second:"2-digit" }).format(now);
+  tzYE.textContent = new Intl.DateTimeFormat("ru-RU", { timeZone:"Asia/Aden", hour:"2-digit", minute:"2-digit", second:"2-digit" }).format(now);
+  tzQA.textContent = new Intl.DateTimeFormat("ru-RU", { timeZone:"Asia/Qatar", hour:"2-digit", minute:"2-digit", second:"2-digit" }).format(now);
+  tzUS.textContent = new Intl.DateTimeFormat("ru-RU", { timeZone:"America/New_York", hour:"2-digit", minute:"2-digit", second:"2-digit" }).format(now);
+  tzRU.textContent = new Intl.DateTimeFormat("ru-RU", { timeZone:"Europe/Moscow", hour:"2-digit", minute:"2-digit", second:"2-digit" }).format(now);
+  tzJP.textContent = new Intl.DateTimeFormat("ru-RU", { timeZone:"Asia/Tokyo", hour:"2-digit", minute:"2-digit", second:"2-digit" }).format(now);
+  tzAU.textContent = new Intl.DateTimeFormat("ru-RU", { timeZone:"Australia/Sydney", hour:"2-digit", minute:"2-digit", second:"2-digit" }).format(now);
+}
+if(state.bigClockInterval) clearInterval(state.bigClockInterval);
+state.bigClockInterval = setInterval(updateBigAndTZ, 50);
+updateBigAndTZ();
+
+/* =========================
+   QIBLA CALC
+   ========================= */
+const kaaba = { lat:21.422487, lng:39.826206 };
+function toRad(d){ return d*Math.PI/180; }
+function toDeg(r){ return r*180/Math.PI; }
+function bearingBetween(lat1,lng1,lat2,lng2){
+  const φ1 = toRad(lat1), φ2 = toRad(lat2), Δλ = toRad(lng2 - lng1);
+  const y = Math.sin(Δλ)*Math.cos(φ2);
+  const x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
+  let θ = toDeg(Math.atan2(y,x));
+  return (θ + 360) % 360;
+}
+async function updateQibla(lat,lng){
+  const b = bearingBetween(lat,lng,kaaba.lat,kaaba.lng);
+  needleEl.style.transform = `translate(-50%,-100%) rotate(${b}deg)`;
+  qiblaAngle.textContent = b.toFixed(1) + '°';
+  qiblaGeoInfo.textContent = `Siz: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+}
+getGeoQiblaBtn.addEventListener('click', ()=> {
+  if(!navigator.geolocation) return alert('Geolocation mavjud emas');
+  navigator.geolocation.getCurrentPosition(pos => updateQibla(pos.coords.latitude,pos.coords.longitude), err => alert('Lokatsiyani olishda xato: ' + (err.message || '')), { enableHighAccuracy:true, timeout:10000 });
+});
+/* Also allow clicking geoBtn to approximate region */
+geoBtn.addEventListener('click', ()=> {
+  if(!navigator.geolocation) return alert("Geolokatsiyangiz mavjud emas");
+  navigator.geolocation.getCurrentPosition(pos=>{
+    alert('Lokatsiya olindi. Qibla sahifasiga oʻtish tavsiya etiladi.');
+    document.querySelector('[data-target="qibla"]').click();
+    setTimeout(()=> updateQibla(pos.coords.latitude,pos.coords.longitude), 600);
+  }, err=> alert('Lokatsiyani ololmadi: ' + (err.message||'')), { enableHighAccuracy:true, timeout:10000 });
+});
+
+/* =========================
+   INIT
+   ========================= */
+(async function init(){
+  // populate months select
+  const now = new Date();
+  const tMonth = $('#tMonth');
+  if(tMonth) for(let i=0;i<12;i++){
+    const d = new Date(now.getFullYear(), now.getMonth()+i, 1);
+    const val = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const opt = document.createElement('option'); opt.value = val; opt.textContent = d.toLocaleString(undefined,{month:'long',year:'numeric'});
+    tMonth.appendChild(opt);
+  }
+
+  // set region from query if present
+  const q = new URLSearchParams(location.search);
+  if(q.get('region')) { try{ regionSelect.value = q.get('region') }catch(e){} }
+
+  const initial = regionSelect.value || 'toshkent-shahri';
+  state.region = initial;
+
+  // initial load with graceful fallback (if proxy fails, we still show UI)
+  try{ await loadToday(initial); } catch(e){ console.warn('Initial load fail', e); clearTimesUI(); }
+})();
+</script>
+</body>
+</html>
